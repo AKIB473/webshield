@@ -1,5 +1,5 @@
 """
-SARIF 2.1.0 Reporter (v1.0.1)
+SARIF 2.1.0 Reporter (v1.1.0)
 Outputs GitHub Code Scanning compatible SARIF for PR integration.
 """
 
@@ -12,7 +12,7 @@ from webshield.core.models import ScanResult, Severity
 
 SARIF_VERSION = "2.1.0"
 TOOL_NAME = "WebShield"
-TOOL_VERSION = "1.0.1"
+TOOL_VERSION = "1.1.0"
 TOOL_URL = "https://github.com/AKIB473/webshield"
 
 SEV_TO_SARIF = {

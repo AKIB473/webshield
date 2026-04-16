@@ -1,5 +1,5 @@
 """
-WebShield CLI — Entry point (v1.0.1)
+WebShield CLI — Entry point (v1.1.0)
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ console = Console()
 
 
 @click.group()
-@click.version_option("1.0.1", prog_name="webshield")
+@click.version_option("1.1.0", prog_name="webshield")
 def cli():
     """🛡️  WebShield — Website Security Auditor\n
     Know your site's security. Fix it today.\n
@@ -102,7 +102,7 @@ def list_modules():
     """List all available scan modules."""
     from rich.table import Table
     from rich import box
-    table = Table(title="WebShield Modules (v1.0.1)", box=box.ROUNDED, show_lines=True)
+    table = Table(title="WebShield Modules (v1.1.0)", box=box.ROUNDED, show_lines=True)
     table.add_column("Module", style="bold cyan", width=22)
     table.add_column("Description", width=52)
     for mod in ALL_MODULES:

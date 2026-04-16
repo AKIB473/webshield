@@ -1,6 +1,5 @@
 """
-Async Scanner Orchestrator — runs all modules in parallel (v1.0.1)
-~3x faster than sequential scanning.
+Async Scanner Orchestrator — runs all modules in parallel (v1.1.0)
 """
 
 from __future__ import annotations
@@ -19,54 +18,74 @@ from .models import ScanResult, Finding
 console = Console()
 
 ALL_MODULES = [
+    # Core checks — fast
     "ssl_tls",
     "headers",
     "cookies",
-    "info_leak",
-    "sensitive_paths",
     "cors",
     "csp",
-    "dns_email",
+    "clickjacking",
+    "http_methods",
+    # Content & config
+    "info_leak",
+    "sensitive_paths",
+    "mixed_content",
+    "sri_check",
+    "security_txt",
+    # Injection & logic
+    "ssrf",
+    "crlf_injection",
+    "proto_pollution",
+    # Intelligence
     "waf_detect",
     "tech_fingerprint",
-    "open_redirect",
-    "http_methods",
+    "secret_leak",
+    "cloud_exposure",
+    # Auth & session
     "jwt",
+    "rate_limit",
+    "open_redirect",
+    # DNS & infra
+    "dns_email",
     "subdomain_takeover",
+    # Advanced
     "graphql",
     "request_smuggling",
     "supply_chain",
-    "clickjacking",
-    "mixed_content",
-    "sri_check",
 ]
 
 MODULE_LABELS = {
     "ssl_tls":            "SSL/TLS Certificate & Protocols",
     "headers":            "HTTP Security Headers",
     "cookies":            "Cookie Security Flags",
-    "info_leak":          "Information Leakage (.env, .git, backups)",
-    "sensitive_paths":    "Sensitive Path Exposure",
     "cors":               "CORS Misconfiguration",
     "csp":                "Content Security Policy",
-    "dns_email":          "DNS / SPF / DKIM / DMARC",
+    "clickjacking":       "Clickjacking Protection",
+    "http_methods":       "Dangerous HTTP Methods",
+    "info_leak":          "Information Leakage (.env, .git, backups)",
+    "sensitive_paths":    "Sensitive Path Exposure",
+    "mixed_content":      "Mixed Content Detection",
+    "sri_check":          "Subresource Integrity (SRI)",
+    "security_txt":       "security.txt (RFC 9116)",
+    "ssrf":               "Server-Side Request Forgery (SSRF)",
+    "crlf_injection":     "CRLF / HTTP Response Splitting",
+    "proto_pollution":    "JavaScript Prototype Pollution",
     "waf_detect":         "WAF Detection",
     "tech_fingerprint":   "Technology & CVE Fingerprinting",
-    "open_redirect":      "Open Redirect",
-    "http_methods":       "Dangerous HTTP Methods",
+    "secret_leak":        "Secret & Credential Leak Detection",
+    "cloud_exposure":     "Cloud Storage & Infrastructure Exposure",
     "jwt":                "JWT Token Analysis",
+    "rate_limit":         "Rate Limiting / Brute Force Protection",
+    "open_redirect":      "Open Redirect",
+    "dns_email":          "DNS / SPF / DKIM / DMARC",
     "subdomain_takeover": "Subdomain Takeover",
     "graphql":            "GraphQL Security",
     "request_smuggling":  "HTTP Request Smuggling",
     "supply_chain":       "Supply Chain / Dependency CVEs",
-    "clickjacking":       "Clickjacking Protection",
-    "mixed_content":      "Mixed Content Detection",
-    "sri_check":          "Subresource Integrity (SRI)",
 }
 
 
 def _run_module(mod_name: str, url: str, timeout: float) -> List[Finding]:
-    """Run a single module synchronously, return findings."""
     try:
         mod = importlib.import_module(f"webshield.modules.{mod_name}")
         findings: List[Finding] = mod.scan(url, timeout=timeout)
@@ -76,9 +95,10 @@ def _run_module(mod_name: str, url: str, timeout: float) -> List[Finding]:
     except ModuleNotFoundError:
         return []
     except Exception as e:
+        from .models import Severity
         return [Finding(
             title=f"Module error: {mod_name}",
-            severity=__import__("webshield.core.models", fromlist=["Severity"]).Severity.INFO,
+            severity=Severity.INFO,
             description=str(e),
             module=mod_name,
         )]
@@ -86,7 +106,6 @@ def _run_module(mod_name: str, url: str, timeout: float) -> List[Finding]:
 
 async def _run_module_async(mod_name: str, url: str, timeout: float,
                              progress, task_id) -> List[Finding]:
-    """Run a module in a thread executor (non-blocking)."""
     loop = asyncio.get_event_loop()
     findings = await loop.run_in_executor(None, _run_module, mod_name, url, timeout)
     progress.advance(task_id)
@@ -113,8 +132,6 @@ async def _run_all_async(url: str, modules: List[str],
             f"[cyan]Scanning {url}[/cyan]",
             total=len(modules),
         )
-
-        # Run all modules concurrently
         tasks = [
             _run_module_async(m, url, timeout, progress, task)
             for m in modules
@@ -140,13 +157,12 @@ def run_scan(
     timeout: float = 10.0,
     verbose: bool = False,
 ) -> ScanResult:
-    """Run a full async WebShield scan. Returns ScanResult."""
     from .http import normalize_url
     url = normalize_url(target)
     modules_to_run = modules or ALL_MODULES
 
     console.print(
-        f"\n[bold cyan]🛡️  WebShield v1.0.1[/bold cyan] "
+        f"\n[bold cyan]🛡️  WebShield v1.1.0[/bold cyan] "
         f"scanning [bold]{url}[/bold]\n"
     )
 

@@ -196,7 +196,7 @@ def save_html(result: ScanResult, output_path: str) -> None:
   </div>
 
   <div class="footer">
-    WebShield v1.0.0 &bull; by AKIBUZZAMAN AKIB &bull;
+    WebShield v1.0.1 &bull; by AKIBUZZAMAN AKIB &bull;
     <a href="https://github.com/AKIB473/webshield" style="color:#3b82f6">github.com/AKIB473/webshield</a>
   </div>
 </body>

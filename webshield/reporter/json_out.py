@@ -15,7 +15,7 @@ def save_json(result: ScanResult, output_path: str) -> None:
     data = result.to_dict()
     data["generated_at"] = datetime.now(timezone.utc).isoformat()
     data["tool"] = "WebShield"
-    data["version"] = "1.0.0"
+    data["version"] = "1.0.1"
 
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)

@@ -141,7 +141,7 @@ def print_result(result: ScanResult) -> None:
     console.rule()
     console.print(
         f"  [dim]Scanned {result.target} in {result.scan_duration}s  |  "
-        f"WebShield v1.0.0  |  "
+        f"WebShield v1.0.1  |  "
         "github.com/AKIB473/webshield[/dim]"
     )
     console.print()

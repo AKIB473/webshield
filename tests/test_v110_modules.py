@@ -153,7 +153,7 @@ def test_proto_pollution_clean():
 
 def test_all_modules_registered():
     from webshield.core.scanner import ALL_MODULES
-    assert len(ALL_MODULES) == 27
+    assert len(ALL_MODULES) == 35
     assert "ssrf" in ALL_MODULES
     assert "secret_leak" in ALL_MODULES
     assert "cloud_exposure" in ALL_MODULES

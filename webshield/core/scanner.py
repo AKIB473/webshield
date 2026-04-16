@@ -18,7 +18,7 @@ from .models import ScanResult, Finding
 console = Console()
 
 ALL_MODULES = [
-    # Core checks — fast
+    # Core security headers & config
     "ssl_tls",
     "headers",
     "cookies",
@@ -26,16 +26,24 @@ ALL_MODULES = [
     "csp",
     "clickjacking",
     "http_methods",
-    # Content & config
+    # Content & disclosure
     "info_leak",
     "sensitive_paths",
     "mixed_content",
     "sri_check",
     "security_txt",
-    # Injection & logic
+    "broken_links",
+    # Injection attacks
+    "sql_injection",
+    "xss_detection",
+    "lfi",
+    "xxe",
     "ssrf",
     "crlf_injection",
     "proto_pollution",
+    # Malware & compromise
+    "malware_indicators",
+    "log4shell",
     # Intelligence
     "waf_detect",
     "tech_fingerprint",
@@ -43,6 +51,7 @@ ALL_MODULES = [
     "cloud_exposure",
     # Auth & session
     "jwt",
+    "csrf_check",
     "rate_limit",
     "open_redirect",
     # DNS & infra
@@ -82,6 +91,15 @@ MODULE_LABELS = {
     "graphql":            "GraphQL Security",
     "request_smuggling":  "HTTP Request Smuggling",
     "supply_chain":       "Supply Chain / Dependency CVEs",
+    # v1.2.0
+    "sql_injection":      "SQL Injection (Error-based)",
+    "xss_detection":      "XSS — Reflected Cross-Site Scripting",
+    "lfi":                "Local File Inclusion / Path Traversal",
+    "xxe":                "XXE — XML External Entity Injection",
+    "malware_indicators": "Malware & Compromise Indicators",
+    "log4shell":          "Log4Shell / Shellshock / Critical CVEs",
+    "csrf_check":         "CSRF — Cross-Site Request Forgery",
+    "broken_links":       "Broken Links & Dead Asset Detection",
 }
 
 
@@ -162,7 +180,7 @@ def run_scan(
     modules_to_run = modules or ALL_MODULES
 
     console.print(
-        f"\n[bold cyan]🛡️  WebShield v1.1.0[/bold cyan] "
+        f"\n[bold cyan]🛡️  WebShield v1.2.0[/bold cyan] "
         f"scanning [bold]{url}[/bold]\n"
     )
 

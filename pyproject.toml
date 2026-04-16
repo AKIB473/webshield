@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "webshield"
+version = "1.0.0"
+description = "Website security auditor — know your site's security, fix it today."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "AKIBUZZAMAN AKIB", email = "akib@webshield.dev" }]
+keywords = [
+    "security", "scanner", "web", "audit", "ssl", "headers",
+    "cors", "csp", "xss", "vulnerability", "pentest", "ethical"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Internet :: WWW/HTTP",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "httpx[http2]>=0.27.0",
+    "click>=8.1.0",
+    "rich>=13.0.0",
+    "dnspython>=2.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "responses>=0.25.0",
+]
+
+[project.scripts]
+webshield = "webshield.cli:main"
+
+[project.urls]
+Homepage    = "https://github.com/AKIB473/webshield"
+Repository  = "https://github.com/AKIB473/webshield"
+Issues      = "https://github.com/AKIB473/webshield/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["webshield*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

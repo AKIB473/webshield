@@ -1,5 +1,5 @@
 """
-Async Scanner Orchestrator — runs all modules in parallel (v1.6.0)
+Async Scanner Orchestrator — runs all modules in parallel (v1.7.0)
 Includes lightweight crawling to discover URLs with params for injection modules.
 """
 
@@ -78,7 +78,7 @@ ALL_MODULES = [
     "file_upload",
     "dom_xss",
     "business_logic",
-    # Nikto/ZAP parity + CVE coverage (v1.6.0)
+    # Nikto/ZAP parity + CVE coverage (v1.7.0)
     "source_code_disclosure",
     "bypass_403",
     "pii_detection",
@@ -86,6 +86,12 @@ ALL_MODULES = [
     "http_parameter_pollution",
     "cve_checks",
     "websocket_security",
+    # v1.7.0
+    "default_credentials",
+    "exposed_panels",
+    "evasion_scan",
+    "openapi_scan",
+    "xxe_oob",
 ]
 
 MODULE_LABELS = {
@@ -149,6 +155,12 @@ MODULE_LABELS = {
     "http_parameter_pollution":   "HTTP Parameter Pollution (HPP — WAF Bypass, Business Logic)",
     "cve_checks":                 "CVE Fingerprinting (Text4Shell, Confluence, Exchange, Grafana, Struts...)",
     "websocket_security":         "WebSocket Security (CSWSH, Origin Validation, ws:// Downgrade)",
+    # v1.7.0
+    "default_credentials":        "Default Credential Testing (60+ Apps)",
+    "exposed_panels":             "Exposed Admin & Monitoring Panels",
+    "evasion_scan":               "WAF Evasion & Bypass Techniques",
+    "openapi_scan":               "OpenAPI/Swagger Spec Import & Endpoint Testing",
+    "xxe_oob":                    "XXE Out-of-Band & Blind Detection",
 }
 
 
@@ -332,7 +344,7 @@ def run_scan(
     modules_to_run = modules or ALL_MODULES
 
     console.print(
-        f"\n[bold cyan]🛡️  WebShield v1.6.0[/bold cyan] "
+        f"\n[bold cyan]🛡️  WebShield v1.7.0[/bold cyan] "
         f"scanning [bold]{url}[/bold]\n"
     )
 

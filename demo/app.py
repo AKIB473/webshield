@@ -825,8 +825,8 @@ def mixed_content():
 def git_head():
     return Response("ref: refs/heads/main\n", content_type="text/plain")
 
-@app.route("/.git/config")
-def git_config():
+@app.route("/.git/config-v2")
+def git_config_v2():
     return Response("[core]\n\trepositoryformatversion = 0\n[remote \"origin\"]\n\turl = https://github.com/example/secret-app.git\n", content_type="text/plain")
 
 @app.route("/index.php.bak")
@@ -929,7 +929,7 @@ def actuator_configprops():
     }})
 
 # http_parameter_pollution — reflects second value of duplicate param
-@app.route("/search")
+@app.route("/search-hpp")
 def search_hpp():
     # Vulnerable: uses last value of duplicate params (Flask default)
     q = request.args.getlist("q")

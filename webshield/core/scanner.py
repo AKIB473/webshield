@@ -1,5 +1,5 @@
 """
-Async Scanner Orchestrator — runs all modules in parallel (v1.5.0)
+Async Scanner Orchestrator — runs all modules in parallel (v1.6.0)
 Includes lightweight crawling to discover URLs with params for injection modules.
 """
 
@@ -78,6 +78,14 @@ ALL_MODULES = [
     "file_upload",
     "dom_xss",
     "business_logic",
+    # Nikto/ZAP parity + CVE coverage (v1.6.0)
+    "source_code_disclosure",
+    "bypass_403",
+    "pii_detection",
+    "spring_actuator",
+    "http_parameter_pollution",
+    "cve_checks",
+    "websocket_security",
 ]
 
 MODULE_LABELS = {
@@ -133,6 +141,14 @@ MODULE_LABELS = {
     "file_upload":            "File Upload Security & Webshell Detection",
     "dom_xss":                "DOM-Based XSS (JavaScript Source-to-Sink Analysis)",
     "business_logic":         "Business Logic Flaws (Enumeration, Mass Assignment, Workflow)",
+    # v1.6.0
+    "source_code_disclosure":     "Source Code Disclosure (.git, .svn, backups, source maps)",
+    "bypass_403":                 "403 Bypass (Verb Tampering, URL Manipulation, Header Injection)",
+    "pii_detection":              "PII Detection (SSN, Credit Cards, Email Dumps, IBAN)",
+    "spring_actuator":            "Spring Boot Actuator & Framework Debug Panel Exposure",
+    "http_parameter_pollution":   "HTTP Parameter Pollution (HPP — WAF Bypass, Business Logic)",
+    "cve_checks":                 "CVE Fingerprinting (Text4Shell, Confluence, Exchange, Grafana, Struts...)",
+    "websocket_security":         "WebSocket Security (CSWSH, Origin Validation, ws:// Downgrade)",
 }
 
 
@@ -316,7 +332,7 @@ def run_scan(
     modules_to_run = modules or ALL_MODULES
 
     console.print(
-        f"\n[bold cyan]🛡️  WebShield v1.5.0[/bold cyan] "
+        f"\n[bold cyan]🛡️  WebShield v1.6.0[/bold cyan] "
         f"scanning [bold]{url}[/bold]\n"
     )
 

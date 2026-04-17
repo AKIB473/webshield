@@ -1034,8 +1034,236 @@ def xml_endpoint():
         return Response(f"XML parsing error: {e}", status=400, content_type="text/plain")
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+#  v1.8.0 NEW VULNS: session_fixation, ldap_injection, server_side_include,
+#                    polyfill_cdn, hash_disclosure, httpoxy, billion_laughs,
+#                    parameter_tampering, persistent_xss, suspicious_comments,
+#                    private_ip_disclosure, permissions_policy, viewstate_scanner,
+#                    elmah_trace, dangerous_js, spring4shell, form_security,
+#                    proxy_disclosure
+# ──────────────────────────────────────────────────────────────────────────────
+
+# session_fixation — session token in URL
+@app.route("/session-demo")
+def session_demo():
+    token = request.args.get("PHPSESSID", "abc123sessiontoken")
+    return Response(f"<html><body>Session demo. <a href='/session-demo?PHPSESSID={token}'>Click here</a></body></html>",
+                    content_type="text/html")
+
+# ldap_injection — LDAP error on injection
+@app.route("/ldap-search")
+def ldap_search():
+    query = request.args.get("username", "test")
+    if any(c in query for c in ['*', ')', '(', '\\', '\x00']):
+        return Response(f"LDAPException: Invalid DN syntax near '{query}' — javax.naming.NamingException",
+                        status=500, content_type="text/plain")
+    return Response(f"<html>Search results for: {query}</html>", content_type="text/html")
+
+# server_side_include — SSI directive reflected
+@app.route("/ssi-demo")
+def ssi_demo():
+    name = request.args.get("name", "World")
+    # Simulate SSI processing (intentionally vulnerable)
+    if "#exec" in name.lower():
+        return Response("uid=33(www-data) gid=33(www-data) groups=33(www-data)",
+                        content_type="text/html")
+    if "#include" in name.lower():
+        return Response("root:x:0:0:root:/root:/bin/bash\ndaemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin",
+                        content_type="text/html")
+    return Response(f"<html>Hello {name}</html>", content_type="text/html")
+
+# polyfill_cdn — loads script from polyfill.io without SRI
+@app.route("/polyfill-demo")
+def polyfill_demo():
+    return Response("""
+    <!DOCTYPE html><html><head>
+    <script src="https://polyfill.io/v3/polyfill.min.js"></script>
+    <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdn.example.com/lib.js"></script>
+    <script src="https://cdn2.example.com/util.js"></script>
+    </head><body><h1>Polyfill Demo</h1></body></html>""",
+    content_type="text/html")
+
+# hash_disclosure — returns bcrypt hash in response
+@app.route("/api/user-profile")
+def user_profile_hash():
+    return jsonify({
+        "id": 1, "username": "admin",
+        "password": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/HS.iK9i",
+        "password_md5": "5f4dcc3b5aa765d61d8327deb882cf99",
+        "api_secret": "sk-live-abc123"
+    })
+
+# httpoxy — page that hints at Proxy header usage
+@app.route("/proxy-demo")
+def proxy_demo():
+    proxy = request.headers.get("Proxy", "")
+    if proxy:
+        return Response(f"httpoxy: using proxy {proxy} for outbound requests",
+                        status=502, content_type="text/plain")
+    return Response("<html>Proxy demo</html>", content_type="text/html")
+
+# billion_laughs — XML DoS endpoint
+@app.route("/xml-dos", methods=["POST"])
+def xml_dos():
+    import xml.etree.ElementTree as ET
+    data = request.get_data(as_text=True)
+    try:
+        root = ET.fromstring(data)
+        return Response("<ok/>", content_type="application/xml")
+    except ET.ParseError as e:
+        return Response(f"XML parsing error: entity expansion timeout memory",
+                        status=400, content_type="text/plain")
+
+# parameter_tampering — hidden price field that gets reflected
+@app.route("/checkout", methods=["GET", "POST"])
+def checkout():
+    if request.method == "POST":
+        price = request.form.get("price", "9.99")
+        return Response(f"<html>Order placed! You paid: ${price}</html>", content_type="text/html")
+    return Response("""
+    <html><form method=POST>
+    <input type=hidden name=price value=9.99>
+    <input type=hidden name=is_admin value=false>
+    <input type=submit value='Buy Now'>
+    </form></html>""", content_type="text/html")
+
+# persistent_xss — comment board that stores and displays input
+COMMENTS = []
+@app.route("/comments", methods=["GET", "POST"])
+def comments():
+    if request.method == "POST":
+        comment = request.form.get("comment", "")
+        COMMENTS.append(comment)
+        return redirect("/comments")
+    stored = "".join(f"<p>{c}</p>" for c in COMMENTS)  # vulnerable: no escaping
+    return Response(f"""
+    <html><body>
+    <form method=POST><input name=comment><input type=submit value=Post></form>
+    <div id=board>{stored}</div>
+    </body></html>""", content_type="text/html")
+
+# suspicious_comments — HTML with credentials in comments
+@app.route("/commented-secrets")
+def commented_secrets():
+    return Response("""
+    <!DOCTYPE html><html><head></head><body>
+    <!-- TODO: remove before production -->
+    <!-- password=admin123 -->
+    <!-- API_KEY=sk-live-abc123def456 -->
+    <!-- SELECT * FROM users WHERE id = ? -->
+    <!-- Internal server: 192.168.1.50 -->
+    <h1>Welcome</h1>
+    </body></html>""", content_type="text/html")
+
+# private_ip_disclosure — returns internal IP in header/body
+@app.route("/internal-ip")
+def internal_ip():
+    return Response(
+        "<html>Backend server: 192.168.1.50 | DB host: 10.0.0.5</html>",
+        headers={"X-Backend-Server": "192.168.1.50", "Via": "1.1 10.0.0.1"},
+        content_type="text/html"
+    )
+
+# permissions_policy — page with no Permissions-Policy or Referrer-Policy headers
+@app.route("/no-policy-headers")
+def no_policy_headers():
+    # Intentionally omits Permissions-Policy, Referrer-Policy, COOP, COEP
+    return Response("<html><body>No policy headers</body></html>", content_type="text/html")
+
+# viewstate_scanner — ASP.NET style viewstate without MAC
+@app.route("/viewstate-demo")
+def viewstate_demo():
+    import base64
+    # Fake ViewState without MAC signature + embedded email
+    fake_vs = base64.b64encode(b'/wEPDwUKMTY3NzkxMjM0Ng8WBB4FZW1haWwFE2FkbWluQGV4YW1wbGUuY29tZGRk').decode()
+    return Response(f"""
+    <html><form method=POST>
+    <input type=hidden name=__VIEWSTATE value="{fake_vs}">
+    <input type=submit value=Submit>
+    </form></html>""", content_type="text/html")
+
+# elmah_trace — fake ELMAH error log
+@app.route("/elmah.axd")
+def elmah_log():
+    return Response("""
+    <html><body>
+    <h1>ELMAH - Error Log</h1>
+    <p>Error: NullReferenceException at line 42</p>
+    <p>DB Password: supersecret | Stack: System.Web.HttpApplication</p>
+    </body></html>""", content_type="text/html")
+
+@app.route("/phpinfo.php")
+def phpinfo():
+    return Response("<html><h2>PHP Version 8.1.0</h2><p>phpinfo() output</p></html>",
+                    content_type="text/html")
+
+# dangerous_js — eval() and innerHTML with user data + tabnabbing
+@app.route("/dangerous-js-demo")
+def dangerous_js_demo():
+    return Response("""
+    <!DOCTYPE html><html><body>
+    <a href='https://evil.com' target='_blank'>External Link</a>
+    <a href='https://attacker.com' target='_blank'>Another Link</a>
+    <a href='https://malicious.com' target='_blank'>Click me</a>
+    <script>
+    var userInput = location.hash.substring(1);
+    eval(userInput);  // dangerous
+    document.getElementById('output').innerHTML = userInput;  // dangerous
+    setTimeout(userInput, 100);  // dangerous
+    new Function(userInput)();  // dangerous
+    </script>
+    <div id='output'></div>
+    </body></html>""", content_type="text/html")
+
+# spring4shell — spring-like endpoint that processes class.module params
+@app.route("/spring-demo")
+def spring_demo():
+    class_param = request.args.get("class.module.classLoader.resources.context.parent.pipeline.first.pattern", "")
+    if class_param:
+        return Response(
+            "MissingServletRequestParameterException: Spring Framework error — class.module parameter detected",
+            status=400, content_type="text/plain",
+            headers={"X-Powered-By": "Spring Boot/2.5.0"}
+        )
+    return Response(
+        "<html>Spring App</html>",
+        headers={"X-Powered-By": "Spring Boot/2.5.0"},
+        content_type="text/html"
+    )
+
+# form_security — HTTPS form posting to HTTP
+@app.route("/insecure-form")
+def insecure_form():
+    return Response("""
+    <html><body>
+    <form method=POST action='http://example.com/process'>
+        <input type=password name=password>
+        <input type=submit value=Login>
+    </form>
+    <form method=GET action='/login'>
+        <input type=password name=password>
+        <input type=submit value=Submit>
+    </form>
+    </body></html>""", content_type="text/html")
+
+# proxy_disclosure — leaks version via Via/Server headers
+@app.route("/proxy-headers")
+def proxy_headers():
+    return Response(
+        "<html>Proxy test</html>",
+        headers={
+            "Via": "1.1 nginx/1.18.0 (Ubuntu)",
+            "X-Backend-Server": "192.168.1.50:8080",
+            "X-Powered-By": "PHP/7.4.3",
+            "Server": "Apache/2.4.41 (Ubuntu)",
+        },
+        content_type="text/html"
+    )
+
+
 if __name__ == "__main__":
-    print("\n🛡️  WebShield Demo App v1.7.0")
+    print("\n🛡️  WebShield Demo App v1.8.0")
     print("=" * 50)
     print("📍 Running at: http://localhost:5000")
     print("⚠️  Contains INTENTIONAL vulnerabilities for testing")

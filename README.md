@@ -3,12 +3,12 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![CI](https://github.com/AKIB473/webshield/actions/workflows/ci.yml/badge.svg)](https://github.com/AKIB473/webshield/actions)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-1.7.0-brightgreen)](https://github.com/AKIB473/webshield)
+[![Version](https://img.shields.io/badge/version-1.8.0-brightgreen)](https://github.com/AKIB473/webshield)
 [![Stars](https://img.shields.io/github/stars/AKIB473/webshield?style=social)](https://github.com/AKIB473/webshield)
 
 WebShield is a **developer-first** web security scanner. Point it at any website and get:
 - A **security score (0–100)** and **letter grade (A+ to F)**
-- **60 parallel scan modules** covering every OWASP Top 10:2025 category
+- **78 parallel scan modules** covering every OWASP Top 10:2025 category
 - **Code-level fix examples** for every finding — not just "you have XSS", but *here's the exact vulnerable line and the safe version*
 - **Auto-crawling** — discovers injectable URLs automatically, no manual param setup
 - **HTML + JSON + SARIF** reports
@@ -16,7 +16,7 @@ WebShield is a **developer-first** web security scanner. Point it at any website
 - **WAF evasion** techniques to find bypasses
 - **CVE fingerprinting** for 10+ critical vulnerabilities
 
-> **v1.7.0** — 60 modules. New: default credential testing, exposed panel detection, WAF evasion, OpenAPI/Swagger endpoint testing, blind XXE, source code disclosure, 403 bypass, PII detection, Spring Actuator, HTTP parameter pollution, CVE checks, WebSocket security.
+> **v1.8.0** — 78 modules. New: default credential testing, exposed panel detection, WAF evasion, OpenAPI/Swagger endpoint testing, blind XXE, source code disclosure, 403 bypass, PII detection, Spring Actuator, HTTP parameter pollution, CVE checks, WebSocket security.
 
 ---
 
@@ -291,7 +291,7 @@ Score: 0/100  F  |  21 findings  |  23s
 │  Target:  https://example.com                                             │
 │  Score:   12/100  █████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░            │
 │  Grade:     F                                                             │
-│  Time:    11.2s  |  Modules: 60  |  Findings: 44                         │
+│  Time:    11.2s  |  Modules: 78  |  Findings: 44                         │
 ╰───────────────────────────────────────────────────────────────────────────╯
 
 🔴 CRITICAL (6)
@@ -398,7 +398,7 @@ with open("results.json", "w") as fp:
 
 ## 📈 Changelog
 
-### v1.7.0 (current)
+### v1.8.0 (current)
 - 🆕 **Default Credentials** — tests 60+ apps (Jenkins, Grafana, WordPress, Portainer, Gitea, Kibana, phpMyAdmin, Tomcat, Drupal, Rancher, Traefik)
 - 🆕 **Exposed Panels** — 30 admin/monitoring panels (Elasticsearch, Prometheus, Grafana, Mongo Express, HAProxy, Nginx status, .env, pgAdmin...)
 - 🆕 **WAF Evasion** — double-encoding, comment injection, case variation, null bytes, HPP bypass

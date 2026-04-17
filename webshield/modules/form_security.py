@@ -8,8 +8,8 @@ from webshield.core.http import get_client
 
 FORM_PATTERN   = re.compile(r'<form([^>]*)>(.*?)</form>', re.S | re.I)
 ACTION_PATTERN = re.compile(r'action\s*=\s*["\']([^"\']+)["\']', re.I)
-METHOD_PATTERN = re.compile(r'method\s*=\s*["\']([^"\']+)["\']', re.I)
-PASSWORD_INPUT = re.compile(r'<input[^>]+type\s*=\s*["\']password["\']', re.I)
+METHOD_PATTERN = re.compile(r'method\s*=\s*["\']?([^"\'>\s]+)["\']?', re.I)
+PASSWORD_INPUT = re.compile(r'<input[^>]+type\s*=\s*["\']?password["\']?', re.I)
 AUTOCOMPLETE   = re.compile(r'autocomplete\s*=\s*["\']off["\']', re.I)
 
 def scan(url: str, timeout: float = 10.0) -> List[Finding]:

@@ -8,7 +8,7 @@ from webshield.core.http import get_client
 
 PRICE_PARAMS  = re.compile(r"price|amount|cost|total|qty|quantity|fee|charge|discount", re.I)
 ROLE_PARAMS   = re.compile(r"role|admin|isadmin|is_admin|privilege|group|permission|access", re.I)
-HIDDEN_PATTERN= re.compile(r'<input[^>]+type=["\']hidden["\'][^>]*name=["\']([^"\']+)["\'][^>]*value=["\']([^"\']*)["\']', re.I)
+HIDDEN_PATTERN= re.compile(r'<input[^>]+type=["\']?hidden["\']?[^>]*name=["\']?([^"\'>\s]+)["\']?[^>]*value=["\']?([^"\'>\s]*)["\']?', re.I)
 
 
 def _try_price_tamper(client, url, fname, fval):

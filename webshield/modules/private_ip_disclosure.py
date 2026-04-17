@@ -6,12 +6,11 @@ from webshield.core.models import Finding, Severity
 from webshield.core.http import get_client
 
 PRIVATE_IP = re.compile(
-    r'\b(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|'
-    r'172\.(1[6-9]|2[0-9]|3[01])\.\d{1,3}\.\d{1,3}|'
+    r'\b(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|'
+    r'172\.(?:1[6-9]|2[0-9]|3[01])\.\d{1,3}\.\d{1,3}|'
     r'192\.168\.\d{1,3}\.\d{1,3}|'
     r'127\.\d{1,3}\.\d{1,3}\.\d{1,3}|'
-    r'169\.254\.\d{1,3}\.\d{1,3}|'
-    r'::1|fc00::[a-f0-9:]+|fd[a-f0-9]{2}:[a-f0-9:]+)\b',
+    r'169\.254\.\d{1,3}\.\d{1,3})\b',
     re.I
 )
 SKIP_CONTEXT = re.compile(r'example|test|placeholder|192\.168\.1\.(1|100|0)', re.I)

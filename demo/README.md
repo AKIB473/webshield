@@ -89,6 +89,24 @@ webshield scan http://localhost:5000 \
 | `log4shell` | `/` | Log4J JNDI payload in headers |
 | `xxe` | `/api/xml` | Basic XXE |
 | `ssl_tls` | *(TLS check)* | Certificate validation |
+| `session_fixation` | `/session-demo?PHPSESSID=abc` | Session token in URL parameter |
+| `ldap_injection` | `/ldap-search?username=*` | LDAP error on wildcard injection |
+| `server_side_include` | `/ssi-demo?name=<!--#exec cmd="id"-->` | SSI exec directive executed |
+| `polyfill_cdn` | `/polyfill-demo` | polyfill.io + bootcss.com without SRI |
+| `hash_disclosure` | `/api/user-profile` | BCrypt + MD5 hashes in JSON response |
+| `httpoxy` | `/proxy-demo` (with Proxy header) | Proxy header misuse indicator |
+| `billion_laughs` | `/xml-dos` (POST XML) | XML entity expansion error |
+| `parameter_tampering` | `/checkout` | Hidden `price` field accepts 0 |
+| `persistent_xss` | `/comments` | Stored XSS via comment form |
+| `suspicious_comments` | `/commented-secrets` | `<!-- password=admin123 -->` in HTML |
+| `private_ip_disclosure` | `/internal-ip` | `192.168.1.50` in body + `X-Backend-Server` header |
+| `permissions_policy` | `/no-policy-headers` | No Permissions-Policy / Referrer-Policy |
+| `viewstate_scanner` | `/viewstate-demo` | ViewState without MAC + email embedded |
+| `elmah_trace` | `/elmah.axd`, `/phpinfo.php` | ELMAH error log + phpinfo exposed |
+| `dangerous_js` | `/dangerous-js-demo` | eval() + innerHTML + 3× target=_blank |
+| `spring4shell` | `/spring-demo?class.module...` | Spring4Shell probe returns 400 |
+| `form_security` | `/insecure-form` | Form POSTs to HTTP + GET with password field |
+| `proxy_disclosure` | `/proxy-headers` | nginx/1.18.0 in Via + 192.168.x in X-Backend |
 
 ---
 
@@ -96,7 +114,7 @@ webshield scan http://localhost:5000 \
 
 ```
 Score: 0/100  Grade: F
-Findings: 100+  |  CRITICAL: 25+  |  HIGH: 25+
+Findings: 120+  |  CRITICAL: 30+  |  HIGH: 30+
 
 🔴 CRITICAL
   - Default Credentials (admin/admin on /wp-login.php)

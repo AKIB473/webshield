@@ -1,5 +1,5 @@
 """
-Async Scanner Orchestrator — runs all modules in parallel (v1.7.0)
+Async Scanner Orchestrator — runs all modules in parallel (v1.8.0)
 Includes lightweight crawling to discover URLs with params for injection modules.
 """
 
@@ -78,7 +78,7 @@ ALL_MODULES = [
     "file_upload",
     "dom_xss",
     "business_logic",
-    # Nikto/ZAP parity + CVE coverage (v1.7.0)
+    # Nikto/ZAP parity + CVE coverage (v1.8.0)
     "source_code_disclosure",
     "bypass_403",
     "pii_detection",
@@ -92,6 +92,25 @@ ALL_MODULES = [
     "evasion_scan",
     "openapi_scan",
     "xxe_oob",
+    # v1.8.0
+    "session_fixation",
+    "ldap_injection",
+    "server_side_include",
+    "polyfill_cdn",
+    "hash_disclosure",
+    "httpoxy",
+    "billion_laughs",
+    "parameter_tampering",
+    "persistent_xss",
+    "suspicious_comments",
+    "private_ip_disclosure",
+    "permissions_policy",
+    "viewstate_scanner",
+    "elmah_trace",
+    "dangerous_js",
+    "spring4shell",
+    "form_security",
+    "proxy_disclosure",
 ]
 
 MODULE_LABELS = {
@@ -161,6 +180,25 @@ MODULE_LABELS = {
     "evasion_scan":               "WAF Evasion & Bypass Techniques",
     "openapi_scan":               "OpenAPI/Swagger Spec Import & Endpoint Testing",
     "xxe_oob":                    "XXE Out-of-Band & Blind Detection",
+    # v1.8.0
+    "session_fixation": "Session Fixation & Session Token in URL",
+    "ldap_injection": "LDAP Injection",
+    "server_side_include": "Server-Side Include (SSI) Injection",
+    "polyfill_cdn": "Malicious CDN / Polyfill.io Supply Chain",
+    "hash_disclosure": "Password Hash Disclosure (BCrypt/NTLM/MD5/SHA)",
+    "httpoxy": "Httpoxy — Proxy Header Misuse (CVE-2016-5385)",
+    "billion_laughs": "Billion Laughs XML DoS (Exponential Entity Expansion)",
+    "parameter_tampering": "Parameter Tampering (Price/Role Manipulation)",
+    "persistent_xss": "Persistent (Stored) XSS Detection",
+    "suspicious_comments": "Suspicious Comments & Debug Info Disclosure",
+    "private_ip_disclosure": "Private IP Address Disclosure",
+    "permissions_policy": "Permissions-Policy, Referrer-Policy & COOP/COEP Headers",
+    "viewstate_scanner": "ASP.NET ViewState Scanner (MAC, IP/Email Leakage)",
+    "elmah_trace": "ELMAH / Trace.axd / phpinfo / WEB-INF Exposure",
+    "dangerous_js": "Dangerous JS Functions & Reverse Tabnabbing",
+    "spring4shell": "Spring4Shell (CVE-2022-22965) Active Detection",
+    "form_security": "Form Security (HTTPS Transition, Autocomplete, GET Passwords)",
+    "proxy_disclosure": "Proxy & Infrastructure Version Disclosure",
 }
 
 
@@ -344,7 +382,7 @@ def run_scan(
     modules_to_run = modules or ALL_MODULES
 
     console.print(
-        f"\n[bold cyan]🛡️  WebShield v1.7.0[/bold cyan] "
+        f"\n[bold cyan]🛡️  WebShield v1.8.0[/bold cyan] "
         f"scanning [bold]{url}[/bold]\n"
     )
 

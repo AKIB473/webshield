@@ -1,5 +1,5 @@
 """
-WebShield CLI — Entry point (v1.5.0)
+WebShield CLI — Entry point (v1.8.0)
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ console = Console()
 
 
 @click.group()
-@click.version_option("1.5.0", prog_name="webshield")
+@click.version_option("1.8.0", prog_name="webshield")
 def cli():
     """🛡️  WebShield — Website Security Auditor\n
     Know your site's security. Fix it today.\n
@@ -55,6 +55,16 @@ def scan(target, modules, output, json_output, sarif_output,
          print_json_flag, timeout, ci, fail_on, verbose,
          auth_cookies, auth_headers):
     """Scan TARGET for security vulnerabilities.
+
+    \b
+    Termux/Android install:
+        pkg install python
+        pip install webshield
+        webshield scan https://example.com
+
+    \b
+    PC/Linux full install (with HTTP/2):
+        pip install "webshield[http2]"
 
     \b
     Examples:

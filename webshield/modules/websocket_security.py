@@ -1,16 +1,9 @@
 """
-WebSocket Security Module (v1.6.0)
+WebSocket Security Module (v1.8.1)
 Detects WebSocket misconfigurations and vulnerabilities.
-Inspired by: ZAP WebSocket passive scan rules, PortSwigger WS research
 
-Checks:
-1. Unencrypted WebSocket (ws:// on HTTPS site) — downgrade attack
-2. Missing Origin validation — cross-site WebSocket hijacking (CSWSH)
-3. Exposed WebSocket endpoints without authentication signals
-4. WebSocket injection probes (XSS via WS messages)
-5. WS endpoint discovery via common paths
+Termux/Android: raw socket may be blocked — graceful fallback to HTTP-only checks.
 """
-
 from __future__ import annotations
 import re
 import socket
@@ -19,36 +12,32 @@ import hashlib
 from typing import List
 from urllib.parse import urlparse
 from webshield.core.models import Finding, Severity
-from webshield.core.http import get_client
+from webshield.core.http import get_client, is_android
 
-# Common WebSocket endpoint paths
 WS_PATHS = [
     "/ws", "/websocket", "/socket", "/socket.io/",
     "/ws/", "/chat", "/live", "/stream", "/push",
     "/realtime", "/events", "/sockjs/info",
-    "/cable",          # Rails Action Cable
-    "/graphql-ws",     # GraphQL subscriptions
-    "/api/ws",
-    "/_next/webpack-hmr",  # Next.js HMR (should not be in prod)
+    "/cable", "/graphql-ws", "/api/ws",
+    "/_next/webpack-hmr",
 ]
 
-# Patterns in HTTP responses that hint at WebSocket usage
 WS_HINTS = re.compile(
     r"socket\.io|websocket|new WebSocket|SockJS|ActionCable|"
     r"graphql-ws|phoenix\.js|ws://|wss://",
     re.I,
 )
-
-# Upgrade response indicator
 WS_UPGRADE_PATTERN = re.compile(r"upgrade.*websocket|websocket.*upgrade", re.I)
 
 
-def _make_ws_handshake_request(host: str, port: int, path: str,
-                                origin: str, use_ssl: bool = False) -> dict:
-    """
-    Perform a raw HTTP Upgrade request for WebSocket.
-    Returns dict with: status, headers_raw, upgraded
-    """
+def _make_ws_handshake_request(
+    host: str, port: int, path: str, origin: str, use_ssl: bool = False
+) -> dict:
+    """Perform raw HTTP Upgrade. Returns dict with status, headers, upgraded."""
+    # Skip raw socket on Android — ports often blocked
+    if is_android():
+        return {"status": 0, "headers": "", "upgraded": False, "skipped": True}
+
     key = base64.b64encode(b"webshield-probe-key-1234").decode()
     request = (
         f"GET {path} HTTP/1.1\r\n"
@@ -79,9 +68,8 @@ def _make_ws_handshake_request(host: str, port: int, path: str,
         sock.close()
         resp_str = response.decode("utf-8", errors="replace")
         status_line = resp_str.split("\r\n")[0]
-        status_code = int(status_line.split(" ")[1]) if " " in status_line else 0
-        upgraded = status_code == 101
-        return {"status": status_code, "headers": resp_str, "upgraded": upgraded}
+        status_code = int(status_line.split(" ")[1]) if len(status_line.split(" ")) > 1 else 0
+        return {"status": status_code, "headers": resp_str, "upgraded": status_code == 101}
     except Exception as e:
         return {"status": 0, "headers": "", "upgraded": False, "error": str(e)}
 
@@ -89,7 +77,7 @@ def _make_ws_handshake_request(host: str, port: int, path: str,
 def scan(url: str, timeout: float = 10.0) -> List[Finding]:
     findings: List[Finding] = []
     parsed   = urlparse(url)
-    scheme   = parsed.scheme   # http or https
+    scheme   = parsed.scheme
     host     = parsed.hostname or ""
     port     = parsed.port or (443 if scheme == "https" else 80)
     use_ssl  = scheme == "https"
@@ -97,17 +85,12 @@ def scan(url: str, timeout: float = 10.0) -> List[Finding]:
 
     with get_client(timeout=min(timeout, 8.0)) as client:
 
-        # ── Phase 1: Detect WS usage on the main page
-        ws_endpoints_found: List[str] = []
+        # ── 1. Detect WS usage on the main page
         try:
             resp = client.get(url)
             if WS_HINTS.search(resp.text):
-                # Extract ws:// / wss:// URLs from JS source
                 ws_urls = re.findall(r"""(?:ws|wss)://[^\s'"<>]+""", resp.text)
-                for wu in ws_urls[:5]:
-                    ws_endpoints_found.append(wu)
 
-                # Check for unencrypted ws:// on HTTPS page (downgrade)
                 insecure_ws = [w for w in ws_urls if w.startswith("ws://")]
                 if insecure_ws and scheme == "https":
                     findings.append(Finding(
@@ -115,22 +98,14 @@ def scan(url: str, timeout: float = 10.0) -> List[Finding]:
                         severity=Severity.HIGH,
                         description=(
                             "The HTTPS page contains JavaScript that connects to an unencrypted "
-                            "WebSocket endpoint (ws://). This allows network attackers to "
-                            "intercept, read, and modify all WebSocket traffic in cleartext — "
-                            "defeating the HTTPS encryption protecting the page."
+                            "WebSocket (ws://). Network attackers can intercept, read, and modify "
+                            "all WebSocket messages in cleartext, defeating HTTPS protection."
                         ),
-                        evidence=(
-                            f"Found on: {url}\n"
-                            f"Insecure WS URLs: {insecure_ws[:3]}"
-                        ),
-                        remediation=(
-                            "Always use wss:// (WebSocket Secure) on HTTPS sites. "
-                            "Use relative URLs or derive from window.location.protocol."
-                        ),
+                        evidence=f"Insecure WS URLs found: {insecure_ws[:3]}",
+                        remediation="Always use wss:// on HTTPS pages. Derive from window.location.protocol.",
                         code_fix=(
-                            "// ❌ Vulnerable:\n"
-                            "const ws = new WebSocket('ws://example.com/ws');\n\n"
-                            "// ✅ Safe — derive protocol from page:\n"
+                            "// ❌ Vulnerable:\nconst ws = new WebSocket('ws://example.com/ws');\n\n"
+                            "// ✅ Safe:\n"
                             "const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';\n"
                             "const ws = new WebSocket(`${proto}//${window.location.host}/ws`);"
                         ),
@@ -141,87 +116,67 @@ def scan(url: str, timeout: float = 10.0) -> List[Finding]:
         except Exception:
             pass
 
-        # ── Phase 2: Probe common WS endpoints
+        # ── 2. Probe common WS endpoints via HTTP (check for 400/426 = endpoint exists)
         active_paths: List[str] = []
-
         for path in WS_PATHS:
-            # First check if endpoint exists via HTTP (may return 400 "not a WS upgrade")
             try:
                 r = client.get(base_url + path)
-                # 400 with websocket error = endpoint exists but needs upgrade
                 if r.status_code in (200, 400, 426) or WS_UPGRADE_PATTERN.search(str(r.headers)):
                     active_paths.append(path)
             except Exception:
                 continue
 
-        # ── Phase 3: Test Origin validation on discovered endpoints
-        for path in active_paths[:4]:
-            # Test with evil.com origin — if it upgrades, no origin check!
-            result_evil = _make_ws_handshake_request(
-                host, port, path, "https://evil.com", use_ssl
-            )
-            result_same = _make_ws_handshake_request(
-                host, port, path, f"{scheme}://{parsed.netloc}", use_ssl
-            )
-
-            if result_evil.get("upgraded"):
-                # Critical: accepts arbitrary origin — Cross-Site WebSocket Hijacking
+        # ── 3. Test Origin validation (raw socket — skipped on Android)
+        if not is_android():
+            for path in active_paths[:4]:
+                result_evil = _make_ws_handshake_request(
+                    host, port, path, "https://evil.com", use_ssl
+                )
+                if result_evil.get("upgraded"):
+                    findings.append(Finding(
+                        title=f"Cross-Site WebSocket Hijacking (CSWSH) — {path}",
+                        severity=Severity.HIGH,
+                        description=(
+                            f"The WebSocket endpoint {path} accepts connections from arbitrary origins "
+                            "(Origin: https://evil.com accepted). Attackers can connect as victim users "
+                            "and read/send WebSocket messages on their behalf."
+                        ),
+                        evidence=(
+                            f"WebSocket: {base_url.replace('http','ws') + path}\n"
+                            "Origin: https://evil.com → HTTP 101 Upgrade accepted"
+                        ),
+                        remediation="Validate Origin header before accepting WebSocket upgrades.",
+                        code_fix=(
+                            "# Node.js/ws:\n"
+                            "const wss = new WebSocket.Server({\n"
+                            "    verifyClient: ({ origin }) =>\n"
+                            "        ['https://yourdomain.com'].includes(origin)\n"
+                            "});"
+                        ),
+                        reference="https://portswigger.net/web-security/websockets/cross-site-websocket-hijacking",
+                        module="websocket_security",
+                        cvss=8.1,
+                    ))
+        else:
+            # Android: inform about WS endpoints found but can't test origin
+            if active_paths:
                 findings.append(Finding(
-                    title=f"Cross-Site WebSocket Hijacking (CSWSH) — {path}",
-                    severity=Severity.HIGH,
-                    description=(
-                        f"The WebSocket endpoint {path} accepts connections from arbitrary origins "
-                        "(Origin: https://evil.com was accepted). This allows Cross-Site WebSocket "
-                        "Hijacking (CSWSH): a malicious website can connect to this WebSocket as "
-                        "the victim user and read/send messages on their behalf."
-                    ),
-                    evidence=(
-                        f"WebSocket path: {base_url.replace('http', 'ws') + path}\n"
-                        f"Origin: https://evil.com → HTTP 101 Upgrade accepted\n"
-                        f"No origin validation detected"
-                    ),
-                    remediation=(
-                        "Validate the Origin header on the server before accepting WebSocket upgrades. "
-                        "Only accept connections from your own domain(s)."
-                    ),
-                    code_fix=(
-                        "# Python/websockets:\n"
-                        "async def handler(websocket, path):\n"
-                        "    origin = websocket.request_headers.get('Origin', '')\n"
-                        "    allowed = ['https://yourdomain.com']\n"
-                        "    if origin not in allowed:\n"
-                        "        await websocket.close(1008, 'Invalid origin')\n"
-                        "        return\n\n"
-                        "# Node.js/ws:\n"
-                        "const wss = new WebSocket.Server({\n"
-                        "    verifyClient: ({ origin }) =>\n"
-                        "        ['https://yourdomain.com'].includes(origin)\n"
-                        "});"
-                    ),
-                    reference="https://portswigger.net/web-security/websockets/cross-site-websocket-hijacking",
-                    module="websocket_security",
-                    cvss=8.1,
-                ))
-
-            elif result_same.get("upgraded"):
-                # WS endpoint exists but does check origin — note as INFO
-                findings.append(Finding(
-                    title=f"WebSocket Endpoint Found — Origin Check Present ({path})",
+                    title=f"WebSocket Endpoints Found — Manual Origin Test Needed ({len(active_paths)} paths)",
                     severity=Severity.INFO,
                     description=(
-                        f"A WebSocket endpoint was found at {path}. "
-                        "It appears to validate the Origin header correctly — "
-                        "only same-origin connections are accepted."
+                        f"WebSocket endpoint(s) found: {active_paths[:3]}. "
+                        "Cross-site WebSocket hijacking (origin validation) test requires "
+                        "raw socket access — run on a PC for full testing."
                     ),
-                    evidence=f"WebSocket at: {base_url.replace('http','ws') + path}\nSame-origin upgrade: accepted\nEvil-origin upgrade: rejected",
-                    remediation="Ensure WebSocket messages are also authenticated (session/token check).",
+                    evidence=f"Paths: {active_paths[:3]}",
+                    remediation="Test CSWSH manually or re-run on PC/Linux for full analysis.",
                     code_fix="",
                     reference="https://portswigger.net/web-security/websockets",
                     module="websocket_security",
                     cvss=0.0,
                 ))
 
-        # ── Phase 4: Check for Next.js HMR in production (should never be exposed)
+        # ── 4. Next.js HMR in production
         try:
             r = client.get(base_url + "/_next/webpack-hmr")
             if r.status_code in (200, 400) and "webpack" in r.text.lower():
@@ -229,26 +184,13 @@ def scan(url: str, timeout: float = 10.0) -> List[Finding]:
                     title="Next.js HMR WebSocket Exposed in Production",
                     severity=Severity.MEDIUM,
                     description=(
-                        "The Next.js Hot Module Replacement (HMR) WebSocket endpoint is accessible. "
-                        "HMR is a development feature that should never be exposed in production. "
-                        "It reveals source file structure and may allow triggering module reloads."
+                        "Next.js Hot Module Replacement WebSocket is accessible. "
+                        "HMR is a development feature revealing source structure and module paths."
                     ),
                     evidence=f"GET /_next/webpack-hmr → HTTP {r.status_code}",
-                    remediation=(
-                        "Ensure you are deploying a production build (`next build` + `next start`). "
-                        "Never run `next dev` in production."
-                    ),
+                    remediation="Use `next build` + `next start` in production, never `next dev`.",
                     code_fix=(
-                        "# package.json — always use production build:\n"
-                        '"scripts": {\n'
-                        '    "start": "next start",   // production\n'
-                        '    "dev":   "next dev"       // development only\n'
-                        "}\n\n"
-                        "# Block in Nginx as belt-and-suspenders:\n"
-                        "location /_next/webpack-hmr {\n"
-                        "    deny all;\n"
-                        "    return 404;\n"
-                        "}"
+                        "# Nginx:\nlocation /_next/webpack-hmr {\n    deny all;\n    return 404;\n}"
                     ),
                     reference="https://nextjs.org/docs/deployment",
                     module="websocket_security",

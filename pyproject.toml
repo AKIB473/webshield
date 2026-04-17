@@ -11,7 +11,8 @@ license = { text = "MIT" }
 authors = [{ name = "AKIBUZZAMAN AKIB", email = "akib@webshield.dev" }]
 keywords = [
     "security", "scanner", "web", "audit", "ssl", "headers",
-    "cors", "csp", "xss", "vulnerability", "pentest", "ethical"
+    "cors", "csp", "xss", "vulnerability", "pentest", "ethical",
+    "android", "termux",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -29,18 +30,38 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP",
 ]
 requires-python = ">=3.9"
+
+# Core dependencies — all pure-Python, work on Termux ARM without compilation
 dependencies = [
-    "httpx[http2]>=0.27.0",
+    # HTTP client — http2 is optional (pure Python h2 package)
+    # Termux: pip install httpx  (without [http2]) also works
+    "httpx>=0.27.0",
     "click>=8.1.0",
     "rich>=13.0.0",
     "dnspython>=2.4.0",
 ]
 
 [project.optional-dependencies]
+# Full feature set including HTTP/2 support
+http2 = [
+    "httpx[http2]>=0.27.0",
+    "h2>=4.0.0",
+]
+
+# Development and testing
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "responses>=0.25.0",
+]
+
+# Termux-optimised install (same as base — explicit alias for docs)
+termux = []
+
+# Full PC install — everything
+full = [
+    "httpx[http2]>=0.27.0",
+    "h2>=4.0.0",
 ]
 
 [project.scripts]

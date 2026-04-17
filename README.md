@@ -125,6 +125,43 @@ pip install -e ".[dev]"
 
 ---
 
+## 📱 Termux / Android Installation
+
+WebShield runs on Android via Termux — all modules work, with graceful fallback for raw-socket features:
+
+```bash
+# Install Termux from F-Droid (not Play Store)
+pkg update && pkg upgrade
+pkg install python openssl-tool
+
+# Install WebShield (pure Python — no compilation needed)
+pip install webshield
+
+# Scan any site
+webshield scan https://example.com
+
+# Full scan with reports
+webshield scan https://example.com \
+  --output report.html \
+  --json results.json
+```
+
+**What works on Termux (all 78 modules):**
+- ✅ All 78 scan modules run
+- ✅ HTML + JSON + SARIF reports
+- ✅ All injection, header, auth, CVE, disclosure modules
+- ✅ Raw socket modules use smart fallback (timing-based detection)
+- ⚠️ `request_smuggling` → timing probe instead of raw socket (root not needed)
+- ⚠️ `websocket_security` → HTTP-based checks (CSWSH test skipped, run on PC for full)
+- ⚠️ HTTP/2: run `pip install h2` for optional HTTP/2 support
+
+**PC/Linux with HTTP/2:**
+```bash
+pip install "webshield[http2]"
+```
+
+---
+
 ## 🆚 Why WebShield vs the alternatives?
 
 | Feature | WebShield | Nikto | OWASP ZAP | Others |

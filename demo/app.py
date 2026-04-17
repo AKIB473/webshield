@@ -814,8 +814,228 @@ def mixed_content():
 </body></html>"""
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+#  v1.6.0 NEW VULNS: source_code_disclosure, bypass_403, pii_detection,
+#                    spring_actuator, http_parameter_pollution, cve_checks,
+#                    websocket_security
+# ──────────────────────────────────────────────────────────────────────────────
+
+# source_code_disclosure — expose fake .git/HEAD and backup file
+@app.route("/.git/HEAD")
+def git_head():
+    return Response("ref: refs/heads/main\n", content_type="text/plain")
+
+@app.route("/.git/config")
+def git_config():
+    return Response("[core]\n\trepositoryformatversion = 0\n[remote \"origin\"]\n\turl = https://github.com/example/secret-app.git\n", content_type="text/plain")
+
+@app.route("/index.php.bak")
+def backup_file():
+    return Response("<?php\n$db_pass = 'supersecret123';\n$api_key = 'sk-live-abc123';\n?>", content_type="text/plain")
+
+@app.route("/source-map-demo.js")
+def source_map_js():
+    return Response(
+        "// compiled code\nvar x=1;\n//# sourceMappingURL=source-map-demo.js.map",
+        content_type="application/javascript"
+    )
+
+@app.route("/source-map-demo.js.map")
+def source_map_file():
+    return Response(
+        json.dumps({"version": 3, "sources": ["src/app.js", "src/secret.js"], "mappings": "AAAA"}),
+        content_type="application/json"
+    )
+
+# bypass_403 — path returns 403 on GET but 200 on POST (verb tampering)
+@app.route("/secret-admin", methods=["GET", "POST", "PUT", "PATCH"])
+def secret_admin():
+    if request.method == "GET":
+        return Response("Forbidden", status=403)
+    # POST/PUT/PATCH bypass
+    return Response("<html><h1>Admin Panel — Access Granted via Verb Bypass</h1></html>",
+                    content_type="text/html")
+
+# Also X-Original-URL bypass
+@app.route("/bypass-demo")
+def bypass_demo():
+    original_url = request.headers.get("X-Original-URL", "")
+    if "/secret-admin" in original_url:
+        return Response("<html><h1>Bypassed via X-Original-URL</h1></html>", content_type="text/html")
+    return Response("Forbidden", status=403)
+
+# pii_detection — returns SSN and credit card in response
+@app.route("/api/user-data")
+def user_data_pii():
+    return jsonify({
+        "users": [
+            {"id": 1, "name": "Alice", "ssn": "123-45-6789", "email": "alice@example.com",
+             "card": "4532015112830366", "iban": "GB29NWBK60161331926819"},
+            {"id": 2, "name": "Bob",   "ssn": "987-65-4320", "email": "bob@example.com",
+             "card": "5425233430109903", "iban": "DE89370400440532013000"},
+            {"id": 3, "name": "Carol", "ssn": "456-78-9012", "email": "carol@example.com",
+             "card": "374251018720955",  "iban": "FR7630006000011234567890189"},
+            {"id": 4, "name": "Dave",  "ssn": "321-54-9876", "email": "dave@example.com",
+             "card": "6011111111111117", "iban": "ES9121000418450200051332"},
+            {"id": 5, "name": "Eve",   "ssn": "654-32-1098", "email": "eve@example.com",
+             "card": "3566002020360505", "iban": "IT60X0542811101000000123456"},
+        ]
+    })
+
+# spring_actuator — fake actuator endpoints
+@app.route("/actuator")
+def actuator_index():
+    return jsonify({"_links": {
+        "health":     {"href": "/actuator/health"},
+        "env":        {"href": "/actuator/env"},
+        "heapdump":   {"href": "/actuator/heapdump"},
+        "mappings":   {"href": "/actuator/mappings"},
+        "configprops":{"href": "/actuator/configprops"},
+    }})
+
+@app.route("/actuator/env")
+def actuator_env():
+    return jsonify({"activeProfiles": ["production"], "propertySources": [
+        {"name": "systemEnvironment", "properties": {
+            "DB_PASSWORD":     {"value": "supersecret123"},
+            "JWT_SECRET":      {"value": "my-super-jwt-secret-key"},
+            "AWS_ACCESS_KEY":  {"value": "AKIAIOSFODNN7EXAMPLE"},
+            "STRIPE_API_KEY":  {"value": "sk_live_abc123def456"},
+        }}
+    ]})
+
+@app.route("/actuator/heapdump")
+def actuator_heapdump():
+    # Fake binary heap dump indicator
+    return Response(b"\xac\xed\x00\x05heap_dump_simulation_data",
+                    content_type="application/octet-stream")
+
+@app.route("/actuator/mappings")
+def actuator_mappings():
+    return jsonify({"dispatcherServlets": {"dispatcherServlet": [
+        {"predicate": "{GET /api/users}"},
+        {"predicate": "{POST /api/admin/reset}"},
+        {"predicate": "{DELETE /api/user/{id}}"},
+    ]}})
+
+@app.route("/actuator/configprops")
+def actuator_configprops():
+    return jsonify({"contextId": "application", "beans": {
+        "dataSource": {"properties": {
+            "url": "jdbc:postgresql://db:5432/prod",
+            "username": "dbuser",
+            "password": "dbsecret",
+        }}
+    }})
+
+# http_parameter_pollution — reflects second value of duplicate param
+@app.route("/search")
+def search_hpp():
+    # Vulnerable: uses last value of duplicate params (Flask default)
+    q = request.args.getlist("q")
+    val = q[-1] if q else ""
+    return Response(f"<html><body>Search results for: {val}</body></html>",
+                    content_type="text/html")
+
+# websocket_security — page references ws:// on a non-SSL page
+@app.route("/ws-demo")
+def ws_demo():
+    return Response("""
+    <!DOCTYPE html><html><body>
+    <h1>Live Chat</h1>
+    <script>
+    // Intentionally insecure: ws:// on production page
+    const ws = new WebSocket('ws://localhost:5000/ws');
+    ws.onmessage = function(e) { document.getElementById('chat').innerHTML += e.data; }
+    </script>
+    <div id='chat'></div>
+    </body></html>""", content_type="text/html")
+
+# openapi_scan — expose a real OpenAPI spec
+@app.route("/openapi.json")
+def openapi_spec():
+    return jsonify({
+        "openapi": "3.0.0",
+        "info": {"title": "Demo API", "version": "1.0.0"},
+        "paths": {
+            "/api/users":           {"get":    {"summary": "List all users"}},
+            "/api/user/{id}":       {"get":    {"summary": "Get user by ID"},
+                                     "delete": {"summary": "Delete user"}},
+            "/api/admin/settings":  {"get":    {"summary": "Admin settings"}},
+            "/api/tokens":          {"get":    {"summary": "List API tokens"}},
+            "/api/export":          {"get":    {"summary": "Export all data"}},
+        }
+    })
+
+@app.route("/api/tokens")
+def api_tokens():
+    # Unauthenticated endpoint returning sensitive data
+    return jsonify({"tokens": [
+        {"id": 1, "token": "sk-live-abc123secret", "user": "alice"},
+        {"id": 2, "secret": "ghp_realtoken12345",  "user": "bob"},
+    ]})
+
+@app.route("/api/export")
+def api_export():
+    return jsonify({"users": list(USERS.values()), "passwords": [u["password"] for u in USERS.values()]})
+
+# cve_checks — expose version info indicating vulnerable software
+@app.route("/version")
+def version_info():
+    return Response(
+        "Apache Struts 2.5.30 | Spring Framework 5.3.0 | Log4J 2.14.1",
+        headers={"X-Powered-By": "Apache Struts/2.5.30"}
+    )
+
+# default_credentials — WordPress login that accepts admin/admin
+@app.route("/wp-login.php", methods=["GET", "POST"])
+def wp_login():
+    if request.method == "POST":
+        user = request.form.get("log", "")
+        pwd  = request.form.get("pwd", "")
+        if user == "admin" and pwd in ("admin", "password", "admin123"):
+            return redirect("/wp-admin/")
+        return Response("<html>ERROR: Invalid username or password</html>", content_type="text/html")
+    return Response(
+        '<html><body>WordPress Login<br><form method=POST>'
+        '<input name=log><input name=pwd type=password>'
+        '<input type=submit value="Log In"></form></body></html>',
+        content_type="text/html"
+    )
+
+@app.route("/wp-admin/")
+def wp_admin():
+    return Response("<html><h1>WordPress Dashboard — wp-admin</h1></html>", content_type="text/html")
+
+# exposed_panels — fake Grafana and Prometheus pages
+@app.route("/grafana")
+def grafana_panel():
+    return Response("<html><title>Grafana</title><h1>Grafana Dashboard</h1></html>",
+                    content_type="text/html")
+
+@app.route("/prometheus")
+def prometheus_panel():
+    return Response(
+        "# HELP prometheus_build_info A metric with value '1'.\n"
+        "# TYPE prometheus_build_info gauge\nprometheus_build_info{version=\"2.40.0\"} 1",
+        content_type="text/plain"
+    )
+
+# xxe_oob — XML endpoint that processes external entities
+@app.route("/api/xml", methods=["POST"])
+def xml_endpoint():
+    import xml.etree.ElementTree as ET
+    data = request.get_data(as_text=True)
+    try:
+        root = ET.fromstring(data)  # vulnerable: no XXE protection
+        val  = root.text or ""
+        return Response(f"<result>{val}</result>", content_type="application/xml")
+    except ET.ParseError as e:
+        return Response(f"XML parsing error: {e}", status=400, content_type="text/plain")
+
+
 if __name__ == "__main__":
-    print("\n🛡️  WebShield Demo App")
+    print("\n🛡️  WebShield Demo App v1.7.0")
     print("=" * 50)
     print("📍 Running at: http://localhost:5000")
     print("⚠️  Contains INTENTIONAL vulnerabilities for testing")

